@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Management</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f2f5f9; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .header h1 { margin: 0; font-size: 2rem; color: #1f2937; }
+        .header p { margin: 0.5rem 0 0; color: #4b5563; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .floor-group { margin-bottom: 2rem; }
+        .floor-title { font-size: 1.25rem; margin-bottom: 1rem; color: #111827; }
+        .table-card { display: flex; flex-direction: column; justify-content: space-between; padding: 1.2rem; border-radius: 16px; text-decoration: none; color: inherit; border: 2px solid transparent; background: #fff; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); transition: transform 0.18s ease, border-color 0.18s ease; }
+        .table-card:hover { transform: translateY(-3px); border-color: rgba(59, 130, 246, 0.35); }
+        .table-card-link { display: block; color: inherit; text-decoration: none; }
+        .table-action { margin-top: 1rem; display: inline-block; padding: 0.5rem 0.85rem; border-radius: 999px; background: rgba(15,23,42,0.1); color: #111827; text-decoration: none; font-size: 0.9rem; }
+        .table-action:hover { background: rgba(15,23,42,0.18); }
+        .table-card.free { background: #e6ffed; border-color: #34d399; }
+        .table-card.occupied { background: #fee2e2; border-color: #f87171; }
+        .table-card.reserved { background: #fef3c7; border-color: #fbbf24; }
+        .table-number { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .table-meta { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
+        .meta-pill { padding: 0.4rem 0.75rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; }
+        .pill-free { background: #10b981; color: white; }
+        .pill-occupied { background: #ef4444; color: white; }
+        .pill-reserved { background: #f59e0b; color: white; }
+        .table-add { margin-bottom: 2rem; padding: 1.5rem; background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-weight: 600; color: #374151; }
+        select, input[type='number'] { border: 1px solid #d1d5db; border-radius: 10px; padding: 0.9rem 1rem; background: #fff; outline: none; transition: border-color 0.2s ease; }
+        select:focus, input[type='number']:focus { border-color: #2563eb; }
+        .form-actions { display: flex; justify-content: flex-end; margin-top: 1rem; }
+        button { border: none; border-radius: 999px; padding: 0.85rem 1.6rem; background: #2563eb; color: white; font-weight: 600; cursor: pointer; transition: filter 0.2s ease; }
+        button:hover { filter: brightness(1.05); }
+        .errorlist { color: #b91c1c; margin: 0; padding-left: 1rem; }
+        .empty-state { padding: 2rem; text-align: center; border-radius: 16px; background: #ffffff; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Hotel Table Management</h1>
+                <p>Group tables by floor, track capacity, and change status with a single click.</p>
+            </div>
+        </div>
+
+        <section class="table-add">
+            <div style="display:grid; grid-template-columns: 1fr; gap: 1rem;">
+                <div>
+                    <h2>Add Table</h2>
+                    {% if not floors %}
+                        <div class="errorlist" style="background:#fff4e5; color:#92400e; padding:1rem; border-radius:10px; margin-bottom:1rem;">
+                            No floors have been created yet. Please add a floor first.
+                        </div>
+                    {% endif %}
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="table">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                {{ table_form.floor.label_tag }}
+                                {{ table_form.floor }}
+                                {% if table_form.floor.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in table_form.floor.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                {{ table_form.number.label_tag }}
+                                {{ table_form.number }}
+                                {% if table_form.number.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in table_form.number.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                {{ table_form.capacity.label_tag }}
+                                {{ table_form.capacity }}
+                                {% if table_form.capacity.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in table_form.capacity.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                {{ table_form.status.label_tag }}
+                                {{ table_form.status }}
+                                {% if table_form.status.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in table_form.status.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit">Add Table</button>
+                        </div>
+                    </form>
+                </div>
+                <div style="text-align:right;">
+                    <a href="{% url 'floor_dashboard' %}" class="btn btn-secondary" style="display:inline-block; margin-top: 1.5rem;">Go to Floor Management</a>
+                </div>
+            </div>
+        </section>
+
+        {% if floors %}
+            {% for floor in floors %}
+                <section class="floor-group">
+                    <div class="floor-title">{{ floor.name }} — Level {{ floor.level }}</div>
+                    {% if floor.tables.all %}
+                        <div class="card-grid">
+                            {% for table in floor.tables.all %}
+                                <div class="table-card {{ table.status }}">
+                                    <a href="{% url 'table_orders' table.pk %}" class="table-card-link">
+                                        <div class="table-number">Table {{ table.display_number }}</div>
+                                        <div class="table-meta">
+                                            <span class="meta-pill pill-{{ table.status }}">{{ table.get_status_display }}</span>
+                                            <span class="meta-pill">Capacity {{ table.capacity }}</span>
+                                        </div>
+                                    </a>
+                                    <a class="table-action" href="{% url 'toggle_table' table.pk %}">Toggle Status</a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <p>No tables exist on this floor yet.</p>
+                        </div>
+                    {% endif %}
+                </section>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <p>No floors or tables have been created yet.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; height: 100vh; overflow: hidden; }
+        .section { background: #2a2a2a; border-radius: 8px; padding: 1rem; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .section h2 { margin-bottom: 1rem; font-size: 1.3rem; border-bottom: 2px solid #ffc107; padding-bottom: 0.5rem; }
+        .order-card { background: #3a3a3a; border-left: 4px solid #007bff; padding: 1rem; margin-bottom: 0.75rem; border-radius: 4px; cursor: pointer; transition: transform 0.2s; }
+        .order-card:hover { transform: translateX(5px); background: #444; }
+        .order-card.pending { border-left-color: #ffc107; }
+        .order-card.preparing { border-left-color: #17a2b8; }
+        .order-card.ready { border-left-color: #28a745; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .order-id { font-size: 1.1rem; font-weight: bold; }
+        .table-badge { background: #007bff; padding: 0.25rem 0.6rem; border-radius: 3px; font-size: 0.85rem; }
+        .order-meta { font-size: 0.85rem; color: #aaa; margin-bottom: 0.5rem; }
+        .items-preview { font-size: 0.85rem; color: #ccc; }
+        .items-preview li { margin-left: 1rem; }
+        .time-info { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
+        .overdue { background: #dc3545; color: #fff; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.8rem; }
+        .controls { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+        .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; color: white; }
+        .btn-primary { background: #007bff; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; }
+        .counter { background: #ffc107; color: #000; padding: 0.25rem 0.6rem; border-radius: 50%; font-weight: bold; display: inline-block; }
+        .ready-section { background: #1a3a1a; }
+        .empty { text-align: center; color: #666; padding: 2rem; }
+        .status-badge { padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.8rem; font-weight: bold; }
+        .status-preparing { background: #17a2b8; }
+        .status-ready { background: #28a745; }
+    </style>
+    <script>
+        // Poll the kitchen API every 5 seconds and reload only when count changes.
+        let lastCount = {{ pending_count|default:0 }};
+        async function pollOrders() {
+            try {
+                const res = await fetch('{% url "api_orders_list" %}');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.count !== lastCount) {
+                    // If the number of pending orders changed, refresh the page.
+                    location.reload();
+                }
+            } catch (e) {
+                // ignore network errors silently in kitchen display
+                console.warn('Polling error', e);
+            }
+        }
+        setInterval(pollOrders, 5000);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Pending Orders -->
+        <div class="section">
+            <h2>Pending Orders <span id="pending-count" class="counter">{{ pending_count }}</span></h2>
+            
+            <div id="pending-list">
+                {% if pending_orders %}
+                    {% for order in pending_orders %}
+                        <div class="order-card pending" data-order-id="{{ order.id }}">
+                            <div class="order-header">
+                                <span class="order-id">#{{ order.id }} - Table {{ order.table.number }}</span>
+                                <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+                            </div>
+                            
+                            <div class="order-meta">
+                                Waiter: {{ order.waiter.user.first_name|default:"—" }} | 
+                                Floor: {{ order.table.floor.name }}
+                            </div>
+                            
+                            <div class="items-preview">
+                                <strong>Items:</strong>
+                                <ul>
+                                    {% for item in order.items.all %}
+                                        <li>{{ item.menu_item.name }} x{{ item.quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            
+                            <div class="time-info">
+                                Order placed: {{ order.created_at|date:"H:i" }}
+                                {% if order.kitchen_ticket.is_overdue %}
+                                    <div class="overdue">⚠ OVERDUE</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="controls">
+                                <button class="btn btn-primary start-btn" data-order-id="{{ order.id }}">Start Preparing</button>
+                                <a href="{% url 'kitchen_order_detail' order.id %}" class="btn btn-secondary">Details</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty">
+                        <p>✓ All caught up! No pending orders.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Ready for Delivery -->
+        <div class="section ready-section">
+            <h2>Ready for Delivery</h2>
+            
+            <div id="ready-list">
+                {% if ready_orders %}
+                    {% for order in ready_orders %}
+                        <div class="order-card ready" data-order-id="{{ order.id }}">
+                            <div class="order-header">
+                                <span class="order-id">#{{ order.id }} - Table {{ order.table.number }}</span>
+                                <span class="status-badge status-ready">Ready</span>
+                            </div>
+                            
+                            <div class="order-meta">
+                                Total: ${{ order.total_price }}
+                            </div>
+                            
+                            <div class="time-info">
+                                Ready since: {{ order.updated_at|date:"H:i" }}
+                            </div>
+                            
+                            <div class="controls">
+                                <button class="btn btn-success serve-btn" data-order-id="{{ order.id }}">Mark Served</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty">
+                        <p>No orders ready yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+        let lastPending = {{ pending_count|default:0 }};
+        let lastReady = {{ ready_orders|length|default:0 }};
+
+        async function postAction(url) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken },
+                });
+                if (res.ok) pollOrders();
+            } catch (e) {
+                console.warn('Action failed', e);
+            }
+        }
+
+        function makeOrderCard(o, type) {
+            const div = document.createElement('div');
+            div.className = 'order-card ' + (type === 'pending' ? 'pending' : 'ready');
+            div.setAttribute('data-order-id', o.id);
+
+            const header = document.createElement('div'); header.className = 'order-header';
+            header.innerHTML = `<span class="order-id">#${o.id} - Table ${o.table}</span>` +
+                `<span class="status-badge status-${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span>`;
+            div.appendChild(header);
+
+            const meta = document.createElement('div'); meta.className = 'order-meta';
+            meta.textContent = 'Total: $' + o.total.toFixed(2);
+            div.appendChild(meta);
+
+            const ul = document.createElement('ul'); ul.className = 'items-preview';
+            const strong = document.createElement('strong'); strong.textContent = 'Items:'; div.appendChild(strong);
+            const list = document.createElement('ul');
+            for (const it of o.items) {
+                const li = document.createElement('li'); li.textContent = `${it.name} x${it.quantity}`; list.appendChild(li);
+            }
+            div.appendChild(list);
+
+            const controls = document.createElement('div'); controls.className = 'controls';
+            if (type === 'pending') {
+                const btn = document.createElement('button'); btn.className = 'btn btn-primary start-btn'; btn.textContent = 'Start Preparing';
+                btn.dataset.orderId = o.id; btn.addEventListener('click', () => postAction(`/kitchen/order/${o.id}/start/`));
+                controls.appendChild(btn);
+            } else {
+                const btn = document.createElement('button'); btn.className = 'btn btn-success serve-btn'; btn.textContent = 'Mark Served';
+                btn.dataset.orderId = o.id; btn.addEventListener('click', () => postAction(`/kitchen/order/${o.id}/served/`));
+                controls.appendChild(btn);
+            }
+            div.appendChild(controls);
+
+            return div;
+        }
+
+        async function pollOrders() {
+            try {
+                const res = await fetch('{% url "api_orders_list" %}');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.pending_count !== lastPending) {
+                    lastPending = data.pending_count;
+                    document.getElementById('pending-count').textContent = data.pending_count;
+                    const pendingList = document.getElementById('pending-list');
+                    pendingList.innerHTML = '';
+                    if (data.pending.length === 0) {
+                        pendingList.innerHTML = '<div class="empty"><p>✓ All caught up! No pending orders.</p></div>';
+                    } else {
+                        for (const o of data.pending) {
+                            pendingList.appendChild(makeOrderCard(o, 'pending'));
+                        }
+                    }
+                }
+
+                if (data.ready_count !== lastReady) {
+                    lastReady = data.ready_count;
+                    const readyList = document.getElementById('ready-list');
+                    readyList.innerHTML = '';
+                    if (data.ready.length === 0) {
+                        readyList.innerHTML = '<div class="empty"><p>No orders ready yet.</p></div>';
+                    } else {
+                        for (const o of data.ready) {
+                            readyList.appendChild(makeOrderCard(o, 'ready'));
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Polling error', e);
+            }
+        }
+
+        // Start polling every 2 seconds
+        setInterval(pollOrders, 2000);
+    </script>
+</body>
+</html>

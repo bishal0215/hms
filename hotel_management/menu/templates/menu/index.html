@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .category { margin-bottom: 2.5rem; }
+        .category h2 { border-bottom: 2px solid #007bff; padding-bottom: 0.5rem; }
+        .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .item-card { background: white; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .item-image { width: 100%; height: 200px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #999; }
+        .item-image img { width: 100%; height: 100%; object-fit: cover; }
+        .item-body { padding: 1rem; }
+        .item-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .item-desc { font-size: 0.85rem; color: #666; margin-bottom: 0.75rem; line-height: 1.4; }
+        .item-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
+        .item-price { font-size: 1.2rem; font-weight: bold; color: #007bff; }
+        .item-time { font-size: 0.8rem; color: #999; }
+        .available { color: #0a0; font-weight: bold; }
+        .unavailable { color: #a00; font-weight: bold; }
+        .status { font-size: 0.8rem; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Menu</h1>
+        <p>Browse available menu items.</p>
+
+        {% for category in categories %}
+            <div class="category">
+                <h2>{{ category.name }}</h2>
+                {% if category.description %}
+                    <p style="color: #666;">{{ category.description }}</p>
+                {% endif %}
+                <div class="items">
+                    {% for item in category.items.all %}
+                        <div class="item-card">
+                            <div class="item-image">
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" alt="{{ item.name }}">
+                                {% else %}
+                                    No Image
+                                {% endif %}
+                            </div>
+                            <div class="item-body">
+                                <div class="item-name">{{ item.name }}</div>
+                                {% if item.description %}
+                                    <div class="item-desc">{{ item.description }}</div>
+                                {% endif %}
+                                <div class="item-meta">
+                                    <span class="item-price">${{ item.price }}</span>
+                                    <span class="item-time">⏱ {{ item.preparation_time }}min</span>
+                                </div>
+                                <div class="status {% if item.is_available %}available{% else %}unavailable{% endif %}">
+                                    {{ item.is_available|yesno:"Available,Unavailable" }}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p>No items in this category.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <p>No menu categories defined yet.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

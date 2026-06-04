@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kitchen - Fullscreen</title>
+    <style>
+        html,body { height:100%; margin:0; font-family: Arial, Helvetica, sans-serif; background:#0f172a; color:#fff; }
+        .wrap { display:flex; height:100%; gap:16px; padding:16px; box-sizing:border-box; }
+        .column { flex:1; background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; overflow:auto; }
+        h1 { margin:0 0 8px 0; font-size:22px; }
+        .card { background:rgba(255,255,255,0.04); margin-bottom:12px; padding:14px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+        .card .left { display:flex; gap:12px; align-items:center; }
+        .table-bubble { background:#1f2937; padding:10px 14px; border-radius:10px; font-weight:700; font-size:20px; }
+        .items { color:#94a3b8; }
+        .status { padding:6px 10px; border-radius:999px; font-weight:700; }
+        .status-pending { background:#f59e0b; color:#111827; }
+        .status-preparing { background:#06b6d4; color:#042f3a; }
+        .status-ready { background:#10b981; color:#052e16; }
+        .controls { display:flex; gap:8px; }
+        .btn { padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+        .btn-light { background:rgba(255,255,255,0.08); color:#fff; }
+        .btn-primary { background:#2563eb; color:#fff; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .big-count { font-size:48px; font-weight:900; }
+        .actions { display:flex; gap:8px; }
+    </style>
+</head>
+<body>
+    <div class="topbar" style="padding:12px;">
+        <div style="display:flex;align-items:center;gap:16px;">
+            <button id="enterFs" class="btn btn-primary">Enter Fullscreen</button>
+            <h1>Kitchen Display (Fullscreen)</h1>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <div style="text-align:right">
+                <div style="font-size:14px;color:#94a3b8;">Pending</div>
+                <div id="pendingCount" class="big-count">{{ pending_count }}</div>
+            </div>
+            <div class="actions">
+                <a href="{% url 'kitchen_dashboard' %}" class="btn btn-light">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <div class="column" id="pendingCol">
+            <h2>Pending / Preparing</h2>
+            {% for order in pending_orders %}
+                <div class="card" data-id="{{ order.id }}">
+                    <div class="left">
+                        <div class="table-bubble">T{{ order.table.number }}</div>
+                        <div>
+                            <div style="font-weight:800">Order #{{ order.id }}</div>
+                            <div class="items">{% for it in order.items.all %}{{ it.menu_item.name }} x{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="status status-{{ order.status }}">{{ order.get_status_display }}</div>
+                        <div class="controls">
+                            <form method="post" action="{% url 'start_preparing' order.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="btn btn-primary">Start</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div style="padding:20px;color:#94a3b8;">No pending orders</div>
+            {% endfor %}
+        </div>
+
+        <div class="column" id="readyCol">
+            <h2>Ready for Delivery</h2>
+            {% for order in ready_orders %}
+                <div class="card" data-id="{{ order.id }}">
+                    <div class="left">
+                        <div class="table-bubble">T{{ order.table.number }}</div>
+                        <div>
+                            <div style="font-weight:800">Order #{{ order.id }}</div>
+                            <div class="items">{% for it in order.items.all %}{{ it.menu_item.name }} x{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="status status-ready">Ready</div>
+                        <div class="controls">
+                            <form method="post" action="{% url 'mark_served' order.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="btn btn-light">Mark Served</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div style="padding:20px;color:#94a3b8;">No ready orders</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        // Fullscreen toggle
+        document.getElementById('enterFs').addEventListener('click', async function(){
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (e) {
+                console.warn('Fullscreen request failed', e);
+            }
+        });
+
+        // Polling and in-place updates
+        let pendingCol = document.getElementById('pendingCol');
+        let readyCol = document.getElementById('readyCol');
+        let pendingCountEl = document.getElementById('pendingCount');
+
+        async function fetchOrders() {
+            try {
+                const res = await fetch('{% url "api_orders_list" %}');
+                if (!res.ok) return;
+                const data = await res.json();
+                updateUI(data.orders, data.count);
+            } catch (e) { console.warn('fetch error', e); }
+        }
+
+        function createOrderCard(o, ready=false){
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.dataset.id = o.id;
+            const left = document.createElement('div'); left.className='left';
+            const bubble = document.createElement('div'); bubble.className='table-bubble'; bubble.textContent = 'T'+o.table;
+            const info = document.createElement('div');
+            const title = document.createElement('div'); title.style.fontWeight='800'; title.textContent='Order #'+o.id;
+            const items = document.createElement('div'); items.className='items'; items.textContent = o.items.map(i => i.name+' x'+i.quantity).join(', ');
+            info.appendChild(title); info.appendChild(items);
+            left.appendChild(bubble); left.appendChild(info);
+            const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center'; right.style.gap='12px';
+            const status = document.createElement('div'); status.className='status'; status.textContent = o.status;
+            if (o.status==='pending') status.classList.add('status-pending');
+            if (o.status==='preparing') status.classList.add('status-preparing');
+            if (ready) status.classList.add('status-ready');
+            right.appendChild(status);
+            div.appendChild(left); div.appendChild(right);
+            return div;
+        }
+
+        function updateUI(orders, count){
+            // Update pending count
+            pendingCountEl.textContent = count;
+
+            // Build map of order ids
+            const ids = new Set(orders.map(o => o.id));
+
+            // Remove cards not present
+            [...pendingCol.querySelectorAll('.card')].forEach(c => {
+                const id = Number(c.dataset.id);
+                if (!ids.has(id)) c.remove();
+            });
+
+            // Add/update cards
+            orders.forEach(o => {
+                let existing = pendingCol.querySelector(`.card[data-id='${o.id}']`);
+                if (!existing) {
+                    const card = createOrderCard(o, false);
+                    // insert at top
+                    pendingCol.insertBefore(card, pendingCol.firstChild);
+                } else {
+                    // update text if needed
+                    // naive replace
+                    const newCard = createOrderCard(o, false);
+                    existing.replaceWith(newCard);
+                }
+            });
+        }
+
+        // Poll every 3s
+        setInterval(fetchOrders, 3000);
+        // initial
+        fetchOrders();
+    </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order #{{ order.id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .order-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        .info-item { padding: 0.75rem 0; border-bottom: 1px solid #eee; }
+        .info-label { font-weight: bold; color: #666; font-size: 0.9rem; }
+        .info-value { font-size: 1.1rem; margin-top: 0.25rem; }
+        .status-badge { padding: 0.4rem 0.8rem; border-radius: 4px; font-weight: bold; font-size: 0.9rem; display: inline-block; }
+        .status-pending { background: #ffc107; color: black; }
+        .status-preparing { background: #17a2b8; color: white; }
+        .status-ready { background: #28a745; color: white; }
+        .status-served { background: #6c757d; color: white; }
+        .items { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+        th { background: #f4f4f4; font-weight: bold; }
+        .actions { text-align: right; }
+        a { color: #007bff; cursor: pointer; text-decoration: none; margin-left: 1rem; }
+        a:hover { text-decoration: underline; }
+        .total-row { font-weight: bold; background: #f4f4f4; }
+        .controls { margin-bottom: 1rem; }
+        .button { padding: 0.6rem 1rem; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
+        .button:hover { background: #0056b3; }
+        .button-secondary { background: #6c757d; }
+        .button-secondary:hover { background: #5a6268; }
+        .form-inline { display: flex; gap: 1rem; align-items: center; }
+        select { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="submit"] { padding: 0.5rem 1rem; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; }
+        input[type="submit"]:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'orders_index' %}" style="text-decoration: none; color: #007bff;">&larr; Back to Orders</a>
+
+        <div class="header">
+            <h1>Order #{{ order.id }}</h1>
+            
+            <div class="order-info">
+                <div class="info-item">
+                    <div class="info-label">Table</div>
+                    <div class="info-value">Table {{ order.table.number }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Waiter</div>
+                    <div class="info-value">{{ order.waiter.user.first_name|default:"Not assigned" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Created</div>
+                    <div class="info-value">{{ order.created_at|date:"M d, Y H:i" }}</div>
+                </div>
+            </div>
+
+            {% if order.status in 'pending,preparing' %}
+                <div class="controls">
+                    <form method="post" class="form-inline">
+                        {% csrf_token %}
+                        {{ status_form.status }}
+                        <input type="hidden" name="update_status" value="1">
+                        <input type="submit" value="Update Status">
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="items">
+            <h2>Order Items</h2>
+            
+            {% if order.items.all %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Subtotal</th>
+                            <th>Special Instructions</th>
+                            <th class="actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>{{ item.menu_item.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>${{ item.menu_item.price }}</td>
+                                <td>${{ item.get_subtotal }}</td>
+                                <td style="font-size: 0.9rem; color: #666;">{{ item.special_instructions|default:"—" }}</td>
+                                <td class="actions">
+                                    {% if order.status in 'pending,preparing' %}
+                                        <a href="{% url 'edit_item' order.id item.id %}">Edit</a>
+                                        <a href="{% url 'remove_item' order.id item.id %}" onclick="return confirm('Remove this item?');">Remove</a>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        <tr class="total-row">
+                            <td colspan="3" style="text-align: right;">Total:</td>
+                            <td>${{ order.total_price }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="color: #999;">No items in this order yet.</p>
+            {% endif %}
+
+            {% if order.status in 'pending,preparing' %}
+                <div style="margin-top: 1rem;">
+                    <a class="button" href="{% url 'add_item' order.id %}">+ Add Item</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

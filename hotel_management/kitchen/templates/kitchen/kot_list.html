@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Orders</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .header { margin-bottom: 1.5rem; }
+        .back-link { color: #007bff; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
+        .back-link:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+        th { background: #f4f4f4; font-weight: bold; }
+        tr:hover { background: #f9f9f9; }
+        .order-id { font-weight: bold; }
+        .table-badge { background: #007bff; color: white; padding: 0.25rem 0.6rem; border-radius: 3px; font-size: 0.85rem; }
+        .status-badge { padding: 0.25rem 0.6rem; border-radius: 3px; font-size: 0.8rem; font-weight: bold; }
+        .status-pending { background: #ffc107; color: black; }
+        .status-preparing { background: #17a2b8; color: white; }
+        .items-list { font-size: 0.85rem; color: #666; }
+        .items-list li { margin-left: 1rem; }
+        .controls { text-align: right; }
+        .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; color: white; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #007bff; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .empty { text-align: center; padding: 2rem; color: #999; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'kitchen_dashboard' %}" class="back-link">&larr; Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>Pending Kitchen Orders</h1>
+            <p>{{ orders.count }} order(s) waiting</p>
+        </div>
+
+        {% if orders %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Table</th>
+                        <th>Waiter</th>
+                        <th>Items</th>
+                        <th>Status</th>
+                        <th>Order Time</th>
+                        <th class="controls">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td class="order-id">#{{ order.id }}</td>
+                            <td><span class="table-badge">Table {{ order.table.number }}</span></td>
+                            <td>{{ order.waiter.user.first_name|default:"—" }}</td>
+                            <td>
+                                <ul class="items-list">
+                                    {% for item in order.items.all %}
+                                        <li>{{ item.menu_item.name }} x{{ item.quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"H:i" }}</td>
+                            <td class="controls">
+                                <a href="{% url 'kitchen_order_detail' order.id %}" class="btn btn-primary">Details</a>
+                                {% if order.status == 'pending' %}
+                                    <form method="post" action="{% url 'start_preparing' order.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button class="btn btn-success" type="submit">Start</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty">
+                <p>✓ All orders completed! No pending orders.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

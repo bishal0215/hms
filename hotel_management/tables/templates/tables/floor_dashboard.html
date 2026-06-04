@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floor Management</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2ff; color: #111827; }
+        .page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        .topbar h1 { margin: 0; font-size: 2.25rem; }
+        .topbar p { margin: 0.5rem 0 0; color: #4b5563; }
+        .back-link { text-decoration: none; color: #4f46e5; font-weight: 600; }
+        .card { background: #fff; border-radius: 24px; padding: 2rem; box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+        .floor-card { background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%); color: white; border-radius: 20px; padding: 1.5rem; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15); }
+        .floor-card strong { display: block; margin-bottom: 0.75rem; font-size: 1.1rem; }
+        .floor-number { font-size: 3rem; line-height: 1; margin: 0; }
+        .floor-subtitle { margin-top: 0.5rem; color: rgba(255,255,255,0.8); }
+        .form-card { background: #fff; border-radius: 24px; padding: 1.8rem; box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08); }
+        .form-card h2 { margin-top: 0; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; margin-bottom: 1rem; }
+        .form-group label { font-weight: 600; margin-bottom: 0.5rem; color: #111827; }
+        .form-group input { padding: 0.95rem 1rem; border: 1px solid #d1d5db; border-radius: 14px; font-size: 1rem; }
+        .button-row { display: flex; justify-content: flex-end; }
+        .button { background: #4338ca; color: white; border: none; border-radius: 999px; padding: 0.95rem 1.75rem; font-size: 1rem; cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease; }
+        .button:hover { filter: brightness(1.07); transform: translateY(-1px); }
+        .no-items { background: #f8fafc; padding: 1.5rem; border-radius: 16px; color: #475569; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div>
+                <h1>Floor Management</h1>
+                <p>Add, edit, and review hotel floors in a dedicated view.</p>
+            </div>
+            <a href="{% url 'table_dashboard' %}" class="back-link">← Back to Table Dashboard</a>
+        </div>
+
+        <div class="grid">
+            <div class="form-card">
+                <h2>Add Floor</h2>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="form-grid">
+                        <div class="form-group">
+                            {{ floor_form.name.label_tag }}
+                            {{ floor_form.name }}
+                            {% if floor_form.name.errors %}
+                                <ul class="errorlist">
+                                    {% for error in floor_form.name.errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ floor_form.level.label_tag }}
+                            {{ floor_form.level }}
+                            {% if floor_form.level.errors %}
+                                <ul class="errorlist">
+                                    {% for error in floor_form.level.errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <button class="button" type="submit">Create Floor</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Existing Floors</h2>
+                {% if floors %}
+                    <div class="grid" style="margin-top: 1rem;">
+                        {% for floor in floors %}
+                            <div class="floor-card">
+                                <strong>{{ floor.name }}</strong>
+                                <p class="floor-number">{{ floor.level }}</p>
+                                <p class="floor-subtitle">Floor level {{ floor.level }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-items">
+                        No floors have been added yet. Use the form to create your first floor.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

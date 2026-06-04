@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table {{ table.display_number }} Order</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f4f6; color: #111827; }
+        .page { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 2rem; }
+        .topbar h1 { margin: 0; font-size: 2.5rem; }
+        .topbar p { margin: 0.5rem 0 0; color: #6b7280; }
+        .back-link { color: #2563eb; text-decoration: none; font-weight: 600; }
+        .back-link:hover { text-decoration: underline; }
+        .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5rem; }
+        .panel { background: white; border-radius: 24px; padding: 1.8rem; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08); }
+        .panel h2 { margin-top: 0; font-size: 1.5rem; color: #111827; }
+        .order-summary { margin-bottom: 1.5rem; }
+        .order-card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 1rem; margin-bottom: 1rem; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .order-id { font-weight: 700; }
+        .status-badge { padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+        .status-pending { background: #fde68a; color: #92400e; }
+        .status-preparing { background: #bae6fd; color: #0c4a6e; }
+        .status-ready { background: #bbf7d0; color: #14532d; }
+        .item-list { list-style: none; padding-left: 0; margin: 1rem 0 0; color: #374151; }
+        .item-list li { margin-bottom: 0.5rem; }
+        .order-total { font-weight: 700; margin-top: 0.75rem; }
+        .button { display: inline-block; padding: 0.8rem 1.3rem; border-radius: 999px; border: none; background: #2563eb; color: white; text-decoration: none; cursor: pointer; }
+        .button:hover { background: #1d4ed8; }
+        .menu-section { margin-top: 1rem; }
+        .category { margin-bottom: 2rem; }
+        .category h3 { margin-bottom: 0.75rem; font-size: 1.2rem; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .menu-card { border: 1px solid #e5e7eb; border-radius: 18px; background: white; overflow: hidden; display: flex; flex-direction: column; }
+        .menu-card img { width: 100%; height: 180px; object-fit: cover; }
+        .menu-body { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; }
+        .menu-title { font-weight: 700; margin-bottom: 0.5rem; }
+        .menu-desc { color: #4b5563; font-size: 0.95rem; margin-bottom: 1rem; flex-grow: 1; }
+        .menu-meta { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        .menu-price { font-weight: 700; color: #111827; }
+        .menu-time { color: #6b7280; font-size: 0.9rem; }
+        .menu-form { display: grid; gap: 0.75rem; }
+        .menu-form input[type='number'], .menu-form input[type='text'] { width: 100%; padding: 0.8rem 1rem; border: 1px solid #d1d5db; border-radius: 12px; }
+        .menu-form button { width: 100%; background: #10b981; color: white; padding: 0.8rem 1rem; border-radius: 999px; border: none; cursor: pointer; font-weight: 700; }
+        .menu-form button:hover { background: #059669; }
+        .menu-status { margin-top: 0.5rem; font-size: 0.9rem; color: #6b7280; }
+        .status-unavailable { color: #b91c1c; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div>
+                <a href="{% url 'table_dashboard' %}" class="back-link">← Back to Table Dashboard</a>
+                <h1>Table {{ table.display_number }}</h1>
+                <p>Floor: {{ table.floor.name }} • Capacity: {{ table.capacity }}</p>
+            </div>
+            {% if order %}
+                <div class="order-summary">
+                    <div class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</div>
+                    <p style="margin: 0.75rem 0 0;">Active order #{{ order.id }} total: ${{ order.total_price }}</p>
+                    <a class="button" href="{% url 'order_detail' order.id %}">Open Order</a>
+                </div>
+            {% else %}
+                <div class="order-summary">
+                    <div class="status-badge status-pending">No active order</div>
+                    <p style="margin-top: 0.75rem;">Start adding items to create a new order.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Active Orders</h2>
+                {% if orders %}
+                    {% for order_item in orders %}
+                        <div class="order-card">
+                            <div class="order-header">
+                                <span class="order-id">Order #{{ order_item.id }}</span>
+                                <span class="status-badge status-{{ order_item.status }}">{{ order_item.get_status_display }}</span>
+                            </div>
+                            <ul class="item-list">
+                                {% for item in order_item.items.all %}
+                                    <li>{{ item.menu_item.name }} x{{ item.quantity }}</li>
+                                {% endfor %}
+                            </ul>
+                            <div class="order-total">Total: ${{ order_item.total_price }}</div>
+                            <div style="margin-top:0.75rem;">
+                                <a class="button" href="{% url 'order_detail' order_item.id %}" style="background:#374151;">View</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty" style="padding: 2rem; border: 1px dashed #d1d5db; border-radius: 18px; background:#f8fafc;">No active orders for this table.</div>
+                {% endif %}
+            </div>
+            <div class="panel">
+                <h2>Menu</h2>
+                {% for category in categories %}
+                    <div class="category">
+                        <h3>{{ category.name }}</h3>
+                        {% if category.description %}
+                            <p style="color:#6b7280; margin-top:0.25rem;">{{ category.description }}</p>
+                        {% endif %}
+                        <div class="menu-grid">
+                            {% for item in category.items.all %}
+                                <div class="menu-card">
+                                    {% if item.image %}
+                                        <img src="{{ item.image.url }}" alt="{{ item.name }}">
+                                    {% endif %}
+                                    <div class="menu-body">
+                                        <div class="menu-title">{{ item.name }}</div>
+                                        {% if item.description %}
+                                            <div class="menu-desc">{{ item.description }}</div>
+                                        {% endif %}
+                                        <div class="menu-meta">
+                                            <span class="menu-price">${{ item.price }}</span>
+                                            <span class="menu-time">{{ item.preparation_time }} min</span>
+                                        </div>
+                                        <div class="menu-status {% if not item.is_available %}status-unavailable{% endif %}">
+                                            {{ item.is_available|yesno:"Available,Unavailable" }}
+                                        </div>
+                                        {% if item.is_available %}
+                                            <form class="menu-form" method="post">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="menu_item_id" value="{{ item.id }}">
+                                                <input type="number" name="quantity" value="1" min="1" placeholder="Qty">
+                                                <input type="text" name="special_instructions" placeholder="Special instructions">
+                                                <button type="submit">Add to Order</button>
+                                            </form>
+                                        {% else %}
+                                            <div style="margin-top: 1rem; font-size:0.95rem; color:#9ca3af;">Not available</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>No menu items are available yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .controls { margin-bottom: 1.5rem; display: flex; gap: 1rem; }
+        .button { padding: 0.6rem 1rem; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+        .button:hover { background: #0056b3; }
+        .status-filter { display: flex; gap: 0.5rem; }
+        .status-filter button { padding: 0.4rem 0.8rem; border: 1px solid #ccc; background: white; cursor: pointer; border-radius: 4px; font-size: 0.85rem; }
+        .status-filter button.active { background: #007bff; color: white; border-color: #007bff; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+        th { background: #f4f4f4; font-weight: bold; }
+        .status-badge { padding: 0.25rem 0.6rem; border-radius: 3px; font-size: 0.8rem; font-weight: bold; }
+        .status-pending { background: #ffc107; color: black; }
+        .status-preparing { background: #17a2b8; color: white; }
+        .status-ready { background: #28a745; color: white; }
+        .status-served { background: #6c757d; color: white; }
+        .status-cancelled { background: #dc3545; color: white; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .empty { text-align: center; padding: 2rem; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Orders Management</h1>
+        
+        <div class="controls">
+            <a class="button" href="{% url 'create_order' %}">+ New Order</a>
+            <div class="status-filter">
+                <button onclick="filterStatus('')" class="{% if not status_filter %}active{% endif %}">All</button>
+                <button onclick="filterStatus('pending')" class="{% if status_filter == 'pending' %}active{% endif %}">Pending</button>
+                <button onclick="filterStatus('preparing')" class="{% if status_filter == 'preparing' %}active{% endif %}">Preparing</button>
+                <button onclick="filterStatus('ready')" class="{% if status_filter == 'ready' %}active{% endif %}">Ready</button>
+                <button onclick="filterStatus('served')" class="{% if status_filter == 'served' %}active{% endif %}">Served</button>
+            </div>
+        </div>
+
+        {% if orders %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Table</th>
+                        <th>Waiter</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td><strong>#{{ order.id }}</strong></td>
+                            <td>{{ order.table.number }}</td>
+                            <td>{{ order.waiter.user.first_name|default:"—" }}</td>
+                            <td>{{ order.items.count }}</td>
+                            <td>${{ order.total_price }}</td>
+                            <td>
+                                <span class="status-badge status-{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"M d, H:i" }}</td>
+                            <td><a href="{% url 'order_detail' order.id %}">View</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty">
+                <p>No orders found.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filterStatus(status) {
+            const url = status ? `?status=${status}` : '';
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>

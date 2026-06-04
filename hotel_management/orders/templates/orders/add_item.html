@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Item to Order</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; font-family: Arial, sans-serif; }
+        textarea { resize: vertical; }
+        input[type="submit"] { padding: 0.8rem 1.5rem; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; font-size: 1rem; }
+        input[type="submit"]:hover { background: #0056b3; }
+        .button-secondary { display: inline-block; margin-left: 0.5rem; padding: 0.8rem 1.5rem; border: 1px solid #ccc; background: white; color: #333; text-decoration: none; border-radius: 4px; cursor: pointer; }
+        .button-secondary:hover { background: #f4f4f4; }
+        .errorlist { color: #dc3545; margin-bottom: 1rem; padding: 0.75rem; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; list-style: none; }
+        h1 { color: #333; }
+        .back-link { color: #007bff; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'order_detail' order.id %}" class="back-link">&larr; Back to Order</a>
+        <h1>Add Item to Order #{{ order.id }}</h1>
+        <p>Table {{ order.table.number }}</p>
+        
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div class="form-group">
+                {{ form.menu_item.label_tag }}
+                {{ form.menu_item }}
+                {% if form.menu_item.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.menu_item.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.quantity.label_tag }}
+                {{ form.quantity }}
+                {% if form.quantity.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.quantity.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.special_instructions.label_tag }}
+                {{ form.special_instructions }}
+                {% if form.special_instructions.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.special_instructions.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <input type="submit" value="Add Item">
+                <a class="button-secondary" href="{% url 'order_detail' order.id %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
